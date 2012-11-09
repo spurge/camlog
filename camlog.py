@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 
 import os
 import sys
+import getopt
 import gtk.gdk
 from cv2 import cv
 import tarfile
@@ -32,12 +33,51 @@ from datetime import datetime
 import urllib2
 import re
 
+def pelp():
+	print >> sys.stdout, """
+Help message ...
+"""
+
 def perr( err, expl ):
-	print >> sys.stderr, '{1} :: {0}'.format( err, expl )
+	print >> sys.stderr, 'error :: {1} :: {0}'.format( err, expl )
+
+def plog( msg ):
+	print >> sys.stdout, 'debug :: {0}'.format( msg )
 
 def main( argv = None ):
-	filename = datetime.now().strftime( '%Y%m%d%H%M%S.{0}.{1}' )
-	tar = tarfile.open( filename.format( 'tar', 'gz' ), 'w:gz' )
+	verbose = False
+	output = '.'
+
+	if argv is None:
+		argv = sys.argv
+
+	try:
+		opts, args = getopt.getopt( argv[ 1: ], "hvo:", [ "help", "verbose", "output=" ] )
+	except getopt.error, err:
+		perr( err, 'Missing arguments' )
+		pelp()
+		return 2
+
+	for option, value in opts:
+		if option == ( "-v", "verbose" ):
+			verbose = True
+		if option in ( "-h", "--help" ):
+			pelp()
+			return 1
+		if option in ( "-o", "--output" ):
+			output = value
+
+	if not os.path.isdir( output ):
+		perr( 'Output error', 'Specified output {0} is not a directory'.format( output ) )
+		return 2
+
+	filename = datetime.now().strftime( output + '/%Y%m%d%H%M%S.{0}.{1}' )
+
+	try:
+		tar = tarfile.open( filename.format( 'tar', 'gz' ), 'w:gz' )
+	except IOError, err:
+		perr( err, 'Specified output dir {0} is not writeable'.format( output ) )
+		return 2
 
 	camera = cv.CreateCameraCapture( 0 )
 	im = cv.QueryFrame( camera )
