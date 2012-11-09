@@ -29,6 +29,11 @@ import gtk.gdk
 from cv2 import cv
 import tarfile
 from datetime import datetime
+import urllib2
+import re
+
+def perr( err, expl ):
+	print >> sys.stderr, '{1} :: {0}'.format( err, expl )
 
 def main( argv = None ):
 	filename = datetime.now().strftime( '%Y%m%d%H%M%S.{0}.{1}' )
@@ -50,6 +55,37 @@ def main( argv = None ):
 	tar.add( screenfile )
 	os.remove( screenfile )
 
+	try:
+		locfile = filename.format( 'location', 'txt' )
+		locfile_w = open( locfile, 'w' )
+	except IOError, err:
+		perr( err, 'Could not open location file for writing' )
+		return 2
+
+	try:
+		ip = re.search( '((?:[0-9]{1,3}\.?){4})', urllib2.urlopen( 'http://checkip.dyndns.org' ).read() ).group( 1 )
+		print >> locfile_w, 'IP: {0}'.format( ip )
+	except urllib2.URLError, err:
+		perr( err, 'Could not fetch your external ip-address' )
+	except AttributeError, err:
+		perr( err, 'Could not parse data from check-ip.dyndns.org when fetching your ip-address' )
+	
+	try:
+		html = urllib2.urlopen( 'http://whatismyipaddress.com/ip/{0}'.format( ip ) ).read()
+		print >> locfile_w, 'HOSTNAME: {0}'.format( re.search( 'Hostname:<\/th><td>([^<]+)', html ).group( 1 ) )
+		print >> locfile_w, 'ISP: {0}'.format( re.search( 'ISP:<\/th><td>([^<]+)', html ).group( 1 ) )
+		print >> locfile_w, 'COUNTRY: {0}'.format( re.search( 'Country:<\/th><td>([^<]+)', html ).group( 1 ) )
+		print >> locfile_w, 'CITY: {0}'.format( re.search( 'City:<\/th><td>([^<]+)', html ).group( 1 ) )
+		print >> locfile_w, 'LATITUDE: {0}'.format( re.search( 'Latitude:<\/th><td>([^<]+)', html ).group( 1 ) )
+		print >> locfile_w, 'LONGITUDE: {0}'.format( re.search( 'Longitude:<\/th><td>([^<]+)', html ).group( 1 ) )
+	except urllib2.URLError, err:
+		perr( err, 'Could not fetch additional location data' )
+	except AttributeError, err:
+		perr( err, 'Could not parse data from whatismyipaddress.com/ip when fetching your ip-address' )
+
+	locfile_w.close()
+	tar.add( locfile )
+	os.remove( locfile )
 	tar.close()
 
 if __name__ == "__main__":

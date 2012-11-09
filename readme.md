@@ -15,7 +15,12 @@ uploading to some defined host.
 How does it work at the moment?
 -------------------------------
 
-It's a python script. It uses *opencv* and *gtk*, witch you'll have to install. It
-captures a frame with your webcam (if you have one). And it takes a
-screenshot. The two image-files will then get compressed with tar and
-gzip and named with year, month, day, hour and second.
+* It's a python script.
+* It uses *opencv* and *gtk*, witch you'll have to install.
+* It captures a frame with your webcam (if you have one).
+* And it takes a screenshot.
+* Then it fetches your external ip-address, hostname, isp, country,
+  city, latitude and longitude.
+* The two image-files and your network identity will then get
+  compressed with tar and gzip and named with year, month, day,
+  hour and second.
