@@ -39,10 +39,18 @@ Help message ...
 """
 
 def perr( err, expl ):
-	print >> sys.stderr, 'error :: {1} :: {0}'.format( err, expl )
+	print >> sys.stderr, '{2} :: error :: {1} :: {0}'.format(
+		err,
+		expl,
+		datetime.now().strftime( '%Y-%m-%d %H:%M:%S' ),
+	)
 
-def plog( msg ):
-	print >> sys.stdout, 'debug :: {0}'.format( msg )
+def plog( verbose, msg ):
+	if verbose:
+		print >> sys.stdout, '{1} :: debug :: {0}'.format(
+			msg,
+			datetime.now().strftime( '%Y-%m-%d %H:%M:%S' ),
+		)
 
 def main( argv = None ):
 	verbose = False
@@ -59,7 +67,7 @@ def main( argv = None ):
 		return 2
 
 	for option, value in opts:
-		if option == ( "-v", "verbose" ):
+		if option in ( "-v", "--verbose" ):
 			verbose = True
 		if option in ( "-h", "--help" ):
 			pelp()
@@ -75,9 +83,18 @@ def main( argv = None ):
 
 	try:
 		tar = tarfile.open( filename.format( 'tar', 'gz' ), 'w:gz' )
+		plog( verbose, 'Created tar file: {0}'.format( filename.format( 'tar', 'gz' ) ) )
 	except IOError, err:
 		perr( err, 'Specified output dir {0} is not writeable'.format( output ) )
 		return 2
+
+	# Prevent opencv or gtk to do any stderr
+	sys.stdout.flush()
+	newstdout = os.dup( 2 )
+	devnull = os.open( '/dev/null', os.O_WRONLY )
+	os.dup2( devnull, 2 )
+	os.close( devnull )
+	sys.stderr = os.fdopen( newstdout, 'w' )
 
 	camera = cv.CreateCameraCapture( 0 )
 	im = cv.QueryFrame( camera )
@@ -85,6 +102,7 @@ def main( argv = None ):
 	cv.SaveImage( camfile, im )
 	tar.add( camfile )
 	os.remove( camfile )
+	plog( verbose, 'Camera snapshot taken: {0}'.format( camfile ) )
 
 	window = gtk.gdk.get_default_root_window()
 	size = window.get_size()
@@ -94,6 +112,7 @@ def main( argv = None ):
 	pb.save( screenfile, 'png' )
 	tar.add( screenfile )
 	os.remove( screenfile )
+	plog( verbose, 'Screenshot taken: {0}'.format( screenfile ) )
 
 	try:
 		locfile = filename.format( 'location', 'txt' )
@@ -105,6 +124,7 @@ def main( argv = None ):
 	try:
 		ip = re.search( '((?:[0-9]{1,3}\.?){4})', urllib2.urlopen( 'http://checkip.dyndns.org' ).read() ).group( 1 )
 		print >> locfile_w, 'IP: {0}'.format( ip )
+		plog( verbose, 'Found ip: {0}'.format( ip ) )
 	except urllib2.URLError, err:
 		perr( err, 'Could not fetch your external ip-address' )
 	except AttributeError, err:
@@ -118,6 +138,7 @@ def main( argv = None ):
 		print >> locfile_w, 'CITY: {0}'.format( re.search( 'City:<\/th><td>([^<]+)', html ).group( 1 ) )
 		print >> locfile_w, 'LATITUDE: {0}'.format( re.search( 'Latitude:<\/th><td>([^<]+)', html ).group( 1 ) )
 		print >> locfile_w, 'LONGITUDE: {0}'.format( re.search( 'Longitude:<\/th><td>([^<]+)', html ).group( 1 ) )
+		plog( verbose, 'Stuffed your location in: {0}'.format( locfile ) )
 	except urllib2.URLError, err:
 		perr( err, 'Could not fetch additional location data' )
 	except AttributeError, err:
